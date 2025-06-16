@@ -1,83 +1,51 @@
 package ru.itmentor.spring.boot_security.demo.controller;
 
-import javax.validation.Valid;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.itmentor.spring.boot_security.demo.model.Role;
 import ru.itmentor.spring.boot_security.demo.model.User;
 import ru.itmentor.spring.boot_security.demo.repository.RoleRepository;
 import ru.itmentor.spring.boot_security.demo.service.UserService;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
-@RequestMapping("/admin")
+@RequestMapping("/api/admin/")
 public class AdminController {
+
     private final UserService userService;
-    private final RoleRepository roleRepository;
 
-    @GetMapping
-    public String findAllUsers(Model model) {
-        List<User> allUsers = userService.findAllUsers();
-        model.addAttribute("users", allUsers);
-        return "/admin";
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> findAllUsers() {
+        List<User> users = userService.findAllUsers();
+        return ResponseEntity.ok(users);
     }
 
-    @GetMapping("/saveUser")
-    public String saveUserForm(Model model) {
-        model.addAttribute("user", new User());
-        model.addAttribute("allRoles", roleRepository.findAll());
-        return "/saveUser";
-    }
-
-    @PostMapping("/saveUser")
-    public String saveUser(@Valid @ModelAttribute("user") User user,
-                           BindingResult bindingResult,
-                           @RequestParam("roles") Set<Long> roleIds) {
-        if (bindingResult.hasErrors()) {
-            return "/saveUser";
-        }
-
-        Set<Role> roles = roleIds.stream()
-                .map(id -> roleRepository.findById(id).orElseThrow())
-                .collect(Collectors.toSet());
-        user.setRoles(roles);
+    @PostMapping("/users")
+    public ResponseEntity<User> saveUser(@RequestBody User user) {
+        userService.prepareRoles(user);
         userService.saveUser(user);
-        return "redirect:/admin/";
+        return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/updateUser")
-    public String updateUserForm(@RequestParam("id") Long id, Model model) {
-        model.addAttribute("user", userService.findById(id).orElseThrow());
-        model.addAttribute("allRoles", roleRepository.findAll());
-        return "/updateUser";
-    }
-
-    @PostMapping("/updateUser")
-    public String updateUser(@Valid @ModelAttribute("user") User user,
-                             BindingResult bindingResult,
-                             @RequestParam("roles") Set<Long> roleIds) {
-        if (bindingResult.hasErrors()) {
-            return "/updateUser";
-        }
-        Set<Role> roles = roleIds.stream()
-                .map(id -> roleRepository.findById(id).orElseThrow())
-                .collect(Collectors.toSet());
-        user.setRoles(roles);
+    @PutMapping("/users/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
+        user.setId(id);
         userService.saveUser(user);
-        return "redirect:/admin/";
+        return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/deleteUser")
-    public String deleteUser(@RequestParam("id") Long id) {
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-        return "redirect:/admin/";
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        return userService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

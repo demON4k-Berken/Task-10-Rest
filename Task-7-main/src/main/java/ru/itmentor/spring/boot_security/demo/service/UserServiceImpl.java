@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -94,5 +95,16 @@ public class UserServiceImpl implements UserService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
                 .orElseThrow();
+    }
+
+    @Override
+    public void prepareRoles(User user) {
+        if (user.getRoles() != null) {
+            Set<Role> roles = user.getRoles().stream()
+                    .map(role -> roleRepository.findById(role.getId())
+                            .orElseThrow())
+                    .collect(Collectors.toSet());
+            user.setRoles(roles);
+        }
     }
 }
